@@ -148,12 +148,53 @@ export class FlatFile extends StorageAPI.Async {
     await this.removeItem(MetadataKey(id));
   }
 
-  async listGames(): Promise<string[]> {
+  async listGames(opts?: StorageAPI.ListGamesOpts): Promise<string[]> {
     const keys = await this.games.keys();
     const suffix = ':metadata';
-    return keys
-      .filter(k => k.endsWith(suffix))
-      .map(k => k.substring(0, k.length - suffix.length));
+
+    const arr = await Promise.all(
+      keys.map(async k => {
+        if (k.endsWith(suffix)) {
+          const matchID = k.substring(0, k.length - suffix.length);
+
+          if (opts) {
+            const game = await this.fetch(matchID, {
+              state: true,
+              metadata: true,
+            });
+
+            if (opts.gameName && opts.gameName !== game.metadata.gameName) {
+              return false;
+            }
+
+            if (
+              typeof opts.where?.isGameover !== 'undefined' &&
+              opts.where.isGameover !== !!game.state.ctx.gameover
+            ) {
+              return false;
+            }
+
+            if (
+              typeof opts.where?.updatedAfter === 'number' &&
+              opts.where.updatedAfter < game.metadata.updatedAt
+            ) {
+              return false;
+            }
+
+            if (
+              typeof opts.where?.updatedBefore === 'number' &&
+              opts.where.updatedBefore > game.metadata.updatedAt
+            ) {
+              return false;
+            }
+          }
+
+          return matchID;
+        }
+      })
+    );
+
+    return arr.filter((r): r is string => typeof r === 'string');
   }
 }
 

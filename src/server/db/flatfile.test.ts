@@ -67,6 +67,28 @@ describe('FlatFile', () => {
     expect(keys2).toHaveLength(0);
   });
 
+  test('listGames options', async () => {
+    async function createGame(gameName: string) {
+      const state: unknown = { a: 1 };
+      const metadata: Partial<Server.MatchData> = { gameName };
+
+      await db.createGame('gameName', {
+        initialState: state as State,
+        metadata: metadata as Server.MatchData,
+      });
+    }
+
+    await createGame('game1');
+    await createGame('game2');
+
+    // return all keys
+    let keys = await db.listGames();
+    expect(keys).toEqual(['game1', 'game2']);
+
+    keys = await db.listGames({ gameName: 'game1' });
+    expect(keys).toEqual(['game1']);
+  });
+
   test('log', async () => {
     const logEntry1: LogEntry = {
       _stateID: 0,
